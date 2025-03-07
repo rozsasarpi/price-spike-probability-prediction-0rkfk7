@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  rtlmp-backend:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./forecasts:/app/forecasts
+      - ./logs:/app/logs
+    environment:
+      - BACKEND_ENVIRONMENT=${BACKEND_ENVIRONMENT}
+      - BACKEND_LOG_LEVEL=${BACKEND_LOG_LEVEL}
+      - BACKEND_PARALLEL_JOBS=${BACKEND_PARALLEL_JOBS}
+      - ERCOT_API_KEY=${ERCOT_API_KEY}
+      - ERCOT_API_SECRET=${ERCOT_API_SECRET}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      - ERCOT_API_BASE_URL=${ERCOT_API_BASE_URL}
+      - ERCOT_API_TIMEOUT=${ERCOT_API_TIMEOUT}
+      - ERCOT_API_MAX_RETRIES=${ERCOT_API_MAX_RETRIES}
+      - WEATHER_API_BASE_URL=${WEATHER_API_BASE_URL}
+      - WEATHER_API_TIMEOUT=${WEATHER_API_TIMEOUT}
+      - WEATHER_API_MAX_RETRIES=${WEATHER_API_MAX_RETRIES}
+      - DEFAULT_NODE_IDS=${DEFAULT_NODE_IDS}
+      - DEFAULT_PRICE_THRESHOLDS=${DEFAULT_PRICE_THRESHOLDS}
+      - TIMEZONE=${TIMEZONE}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: ${BACKEND_CPU_LIMIT}
+          memory: ${BACKEND_MEMORY_LIMIT}
+        reservations:
+          cpus: ${BACKEND_CPU_RESERVATION}
+          memory: ${BACKEND_MEMORY_RESERVATION}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.path.exists('/app/logs/pipeline.log') or exit(1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    expose:
+      - 8000
+    networks:
+      - rtlmp-network
+
+  rtlmp-cli:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/cli.Dockerfile
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./forecasts:/app/forecasts
+      - ./logs:/app/logs
+    environment:
+      - CLI_ENVIRONMENT=${CLI_ENVIRONMENT}
+      - CLI_LOG_LEVEL=${CLI_LOG_LEVEL}
+      - ERCOT_API_KEY=${ERCOT_API_KEY}
+      - ERCOT_API_SECRET=${ERCOT_API_SECRET}
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+      - DEFAULT_NODE_IDS=${DEFAULT_NODE_IDS}
+      - DEFAULT_PRICE_THRESHOLDS=${DEFAULT_PRICE_THRESHOLDS}
+      - TIMEZONE=${TIMEZONE}
+    deploy:
+      resources:
+        limits:
+          cpus: ${CLI_CPU_LIMIT}
+          memory: ${CLI_MEMORY_LIMIT}
+        reservations:
+          cpus: ${CLI_CPU_RESERVATION}
+          memory: ${CLI_MEMORY_RESERVATION}
+    networks:
+      - rtlmp-network
+    depends_on:
+      - rtlmp-backend
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../monitoring/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME}
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.enable-lifecycle
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: ${PROMETHEUS_CPU_LIMIT}
+          memory: ${PROMETHEUS_MEMORY_LIMIT}
+    networks:
+      - rtlmp-network
+    depends_on:
+      - rtlmp-backend
+      - node-exporter
+
+  grafana:
+    image: grafana/grafana:9.0.0
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=${GRAFANA_ALLOW_SIGN_UP}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: ${GRAFANA_CPU_LIMIT}
+          memory: ${GRAFANA_MEMORY_LIMIT}
+    networks:
+      - rtlmp-network
+    depends_on:
+      - prometheus
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)
+    expose:
+      - 9100
+    restart: unless-stopped
+    networks:
+      - rtlmp-network
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  rtlmp-network:
