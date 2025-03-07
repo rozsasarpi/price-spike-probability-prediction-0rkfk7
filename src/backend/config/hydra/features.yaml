@@ -1,0 +1,158 @@
+# Hydra configuration for feature engineering in the ERCOT RTLMP spike prediction system
+# This file defines configuration for feature groups, parameters, and transformations
+# hydra: 1.3+ / omegaconf: 2.3+
+
+# Feature groups to include in the feature engineering process
+feature_groups:
+  - time
+  - statistical
+  - weather
+  - market
+
+# Time-based feature configuration
+time_features:
+  enabled: true
+  timestamp_column: timestamp
+  features:
+    - hour_of_day          # Hour of day (0-23)
+    - day_of_week          # Day of week (0-6, where 0 is Monday)
+    - is_weekend           # Boolean indicator for weekend days
+    - month                # Month of year (1-12)
+    - season               # Season (spring, summer, fall, winter)
+    - is_holiday           # Boolean indicator for holidays
+    - hour_sin_cos         # Cyclical encoding of hour using sine/cosine
+    - day_of_week_sin_cos  # Cyclical encoding of day of week using sine/cosine
+    - month_sin_cos        # Cyclical encoding of month using sine/cosine
+    - is_dst               # Boolean indicator for daylight saving time
+    - time_of_day_category # Categorical time of day (morning, afternoon, evening, night)
+  timezone: US/Central     # Timezone for time-based calculations (ERCOT is in US/Central)
+
+# Statistical feature configuration
+statistical_features:
+  enabled: true
+  price_column: price          # Column containing price values
+  timestamp_column: timestamp  # Column containing timestamp values
+  hourly_aggregation: true     # Aggregate 5-minute data to hourly if true
+  rolling_windows:             # Windows (in hours) for rolling calculations
+    - 1
+    - 6
+    - 12
+    - 24
+    - 48
+    - 72
+    - 168                      # One week
+  spike_thresholds:            # Thresholds for defining price spikes ($)
+    - 50.0
+    - 100.0
+    - 200.0
+    - 500.0
+    - 1000.0
+  quantiles:                   # Quantiles for distribution features
+    - 0.1
+    - 0.25
+    - 0.5
+    - 0.75
+    - 0.9
+  lags:                        # Lag periods (in hours) for autoregressive features
+    - 1
+    - 6
+    - 12
+    - 24
+    - 48
+    - 72
+    - 168                      # One week
+  include_volatility: true     # Include price volatility measures
+  include_distribution: true   # Include distribution statistics (skew, kurtosis)
+  include_differences: true    # Include first-order differences
+
+# Weather feature configuration
+weather_features:
+  enabled: true
+  column_mapping:              # Mapping of weather data columns
+    temperature: temperature
+    wind_speed: wind_speed
+    solar_irradiance: solar_irradiance
+    humidity: humidity
+    cloud_cover: cloud_cover
+  windows:                     # Windows (in hours) for rolling calculations
+    - 1
+    - 6
+    - 12
+    - 24
+    - 48
+  include_interactions: true   # Include interaction terms between weather variables
+  include_location_aggregation: true # Aggregate across multiple locations
+  forecast_horizons:           # Forecast horizons (hours) to include
+    - 1
+    - 6
+    - 12
+    - 24
+    - 48
+    - 72
+
+# Market feature configuration
+market_features:
+  enabled: true
+  windows:                    # Windows (in hours) for rolling calculations
+    - 1
+    - 6
+    - 12
+    - 24
+    - 48
+    - 72
+  include_dam_prices: true    # Include day-ahead market prices
+  include_generation_mix: true # Include generation mix features (wind, solar, gas, etc.)
+  include_load_forecast: true  # Include load forecast features
+  include_reserve_margin: true # Include reserve margin features
+  include_congestion: true     # Include congestion indicators
+
+# Feature selection configuration
+feature_selection:
+  enabled: true
+  methods:                    # Feature selection methods to apply
+    - importance_threshold
+    - correlation_filter
+  importance_threshold:
+    min_importance: 0.005     # Minimum importance threshold for keeping a feature
+    importance_method: gain   # Method for calculating feature importance
+  correlation_filter:
+    threshold: 0.95           # Threshold for removing highly correlated features
+    method: pearson           # Correlation method (pearson, spearman, kendall)
+  max_features: 100           # Maximum number of features to keep
+  target_correlation_threshold: 0.01  # Minimum correlation with target to keep a feature
+
+# Feature transformation configuration
+feature_transformation:
+  scaling:
+    enabled: true
+    method: standard          # Scaling method (standard, minmax, robust)
+    exclude_columns:          # Columns to exclude from scaling
+      - hour_of_day
+      - day_of_week
+      - month
+      - is_weekend
+      - is_holiday
+      - is_dst
+  encoding:
+    enabled: true
+    one_hot:                  # Columns to one-hot encode
+      - season
+      - time_of_day_category
+    ordinal: []               # Columns to ordinally encode
+  imputation:
+    enabled: true
+    method: median            # Imputation method (mean, median, mode, constant)
+    fill_value: null          # Value to use for constant imputation (if method is constant)
+
+# Feature registry configuration
+feature_registry:
+  enabled: true
+  storage_path: ${paths.feature_dir}/registry  # Path to store feature registry
+  version_control: true       # Track feature versions
+  metadata:
+    include_importance: true  # Include feature importance in metadata
+    include_statistics: true  # Include descriptive statistics in metadata
+    include_descriptions: true # Include feature descriptions in metadata
+  validation:
+    enforce_types: true       # Enforce data type validation
+    enforce_ranges: true      # Enforce value range validation
