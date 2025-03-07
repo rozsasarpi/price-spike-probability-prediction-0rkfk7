@@ -1,0 +1,99 @@
+# Configuration for ERCOT RTLMP spike prediction inference
+# Defines settings for generating probability forecasts of price spikes
+
+# Price threshold values used to define what constitutes a "spike"
+thresholds:
+  # Default threshold value ($/MWh)
+  default: 100.0
+  # List of all threshold values to generate predictions for ($/MWh)
+  values: [50.0, 100.0, 200.0, 500.0, 1000.0]
+  # Whether custom thresholds can be specified at runtime
+  custom_thresholds_enabled: true
+  # Dynamic threshold calculation (e.g., based on historical percentiles)
+  dynamic_threshold:
+    enabled: false
+    method: percentile
+    params:
+      percentile: 95
+      lookback_days: 30
+
+# Configuration for forecast generation
+forecast:
+  # Forecast horizon in hours (72 hours = 3 days)
+  horizon: 72
+  # Frequency of forecasts (H = hourly)
+  frequency: 'H'
+  # Confidence level for prediction intervals
+  confidence_level: 0.95
+  # ERCOT nodes to generate forecasts for
+  nodes: ['HB_NORTH', 'HB_SOUTH', 'HB_WEST', 'HB_HOUSTON']
+  # Default node if none specified
+  default_node: 'HB_NORTH'
+  # Include historical context in forecast outputs
+  include_historical_context: true
+  # Number of days of historical data to include
+  historical_context_days: 7
+  # Execution parameters
+  execution:
+    # When to run daily inference (before DAM closure)
+    daily_run_time: '06:00'
+    # Maximum runtime before timeout
+    max_execution_time_minutes: 30
+    # Number of retry attempts on failure
+    retry_attempts: 3
+    # Delay between retry attempts
+    retry_delay_seconds: 300
+
+# Configuration for probability calibration
+calibration:
+  # Whether to apply calibration to raw model outputs
+  enabled: true
+  # Calibration method (isotonic regression)
+  method: 'isotonic'
+  # Number of bins for histogram binning calibration
+  n_bins: 10
+  # Historical data used for calibration
+  historical_data:
+    # Days of historical data to use
+    lookback_days: 90
+    # Minimum number of samples required
+    min_samples: 1000
+    # Use cross-validation for calibration
+    use_cross_validation: true
+    # Number of cross-validation folds
+    cv_folds: 5
+  # Recalibration settings
+  recalibration:
+    # How often to recalibrate
+    frequency: 'weekly'
+    # Minimum improvement required to accept new calibration
+    min_improvement_threshold: 0.05
+
+# Configuration for forecast output
+output:
+  # Output file format
+  format: 'parquet'
+  # Compression method for output files
+  compression: 'snappy'
+  # Output directory (using variable substitution)
+  path: '${paths.forecast_dir}'
+  # Filename template with variables
+  filename_template: 'forecast_{timestamp}_{model_version}.parquet'
+  # Metadata to include with forecasts
+  metadata:
+    # Include information about the model used
+    include_model_info: true
+    # Include feature importance information
+    include_feature_importance: true
+    # Include calibration quality metrics
+    include_calibration_metrics: true
+  # Notification settings
+  notifications:
+    # Whether to send notifications
+    enabled: false
+    # Send notification on successful completion
+    on_completion: true
+    # Send notification on error
+    on_error: true
+    # List of notification recipients
+    recipients: []
