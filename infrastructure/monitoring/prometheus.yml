@@ -1,0 +1,89 @@
+# Global configuration parameters for Prometheus
+global:
+  scrape_interval: 15s       # How frequently to scrape targets
+  evaluation_interval: 15s   # How frequently to evaluate rules
+  scrape_timeout: 10s        # Timeout for scrape requests
+  external_labels:
+    monitor: 'rtlmp-monitor' # External label for all scraped data
+
+# Files containing alerting and recording rules
+rule_files:
+  - "/etc/prometheus/rules/alerts.yml"
+  - "/etc/prometheus/rules/recording_rules.yml"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Configurations for scraping metrics from various targets
+scrape_configs:
+  # Scrape Prometheus's own metrics
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape system metrics from node_exporter
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Scrape metrics from the RTLMP backend service
+  - job_name: 'rtlmp_backend'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['rtlmp-backend:8000']
+    metrics_path: '/metrics'
+
+# NOTE: The following are comments documenting the alert rules and recording rules
+# that should be defined in the referenced rule files
+
+# Alert Rules (to be defined in /etc/prometheus/rules/alerts.yml):
+# - HighTaskFailureRate: Alert when task failure rate exceeds threshold
+#   expr: sum(increase(task_execution_status{status="FAILED"}[1h])) / sum(increase(task_execution_status[1h])) > 0.1
+#   severity: warning
+#
+# - CriticalTaskFailure: Alert when critical tasks fail
+#   expr: increase(task_execution_status{status="FAILED", priority="CRITICAL"}[5m]) > 0
+#   severity: critical
+#
+# - DataCompletenessLow: Alert when data completeness falls below threshold
+#   expr: data_completeness_percentage < 95
+#   severity: warning
+#
+# - ForecastMissed: Alert when forecast is not available before deadline
+#   expr: forecast_time_to_deadline <= 0 and forecast_availability == 0
+#   severity: critical
+#
+# - ModelPerformanceDegradation: Alert when model performance degrades significantly
+#   expr: model_auc_score < 0.7
+#   severity: warning
+
+# Recording Rules (to be defined in /etc/prometheus/rules/recording_rules.yml):
+# - task_execution_time:avg_5m: Average task execution time over 5 minutes
+#   expr: avg_over_time(task_execution_time[5m])
+#
+# - data_completeness:min_1h: Minimum data completeness over 1 hour
+#   expr: min_over_time(data_completeness_percentage[1h])
+#
+# - model_performance:avg_24h: Average model performance metrics over 24 hours
+#   expr: avg_over_time(model_auc_score[24h])
+
+# Metrics monitored for RTLMP prediction system:
+# System metrics:
+# - node_cpu_seconds_total
+# - node_memory_MemTotal_bytes
+# - node_filesystem_size_bytes
+#
+# Application metrics:
+# - task_execution_time
+# - task_execution_status
+# - data_completeness_percentage
+# - model_auc_score
+# - model_brier_score
+# - model_precision
+# - model_recall
+# - forecast_availability
+# - forecast_time_to_deadline
