@@ -1,0 +1,93 @@
+*.py[cod]
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+*.egg-info/
+.installed.cfg
+lib/
+lib64/
+
+# Environment files
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+conda-env/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.DS_Store
+
+# Project specific
+/data/raw/*
+/data/features/*
+/models/*
+/forecasts/*
+/logs/*
+!data/raw/.gitkeep
+!data/features/.gitkeep
+!models/.gitkeep
+!forecasts/.gitkeep
+!logs/.gitkeep
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# Documentation
+docs/_build/
+site/
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Secrets and credentials
+*.pem
+*.key
+credentials.json
+secrets.yaml
+
+# Temporary files
+*.bak
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Package specific
+.hydra/
+outputs/
+wandb/
+mlruns/
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
