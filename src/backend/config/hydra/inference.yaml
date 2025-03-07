@@ -1,0 +1,99 @@
+# Inference configuration for ERCOT RTLMP spike prediction system
+# This configuration defines settings for generating probability forecasts
+
+# Price threshold values for spike prediction
+thresholds:
+  # Default threshold value in $/MWh
+  default: 100.0
+  # Predefined threshold values in $/MWh
+  values: [50.0, 100.0, 200.0, 500.0, 1000.0]
+  # Enable custom threshold values beyond predefined ones
+  custom_thresholds_enabled: true
+  # Dynamic threshold calculation (percentile-based)
+  dynamic_threshold:
+    enabled: false
+    method: percentile
+    params:
+      percentile: 95
+      lookback_days: 30
+
+# Forecast generation configuration
+forecast:
+  # Forecast horizon in hours
+  horizon: 72
+  # Forecast frequency (H = hourly)
+  frequency: H
+  # Confidence level for prediction intervals
+  confidence_level: 0.95
+  # ERCOT nodes to generate forecasts for
+  nodes: [HB_NORTH, HB_SOUTH, HB_WEST, HB_HOUSTON]
+  # Default node for single-node forecasts
+  default_node: HB_NORTH
+  # Include historical context in forecast outputs
+  include_historical_context: true
+  # Number of days of historical context to include
+  historical_context_days: 7
+  # Execution parameters
+  execution:
+    # Daily scheduled run time
+    daily_run_time: "06:00"
+    # Maximum execution time in minutes
+    max_execution_time_minutes: 30
+    # Number of retry attempts if execution fails
+    retry_attempts: 3
+    # Delay between retry attempts in seconds
+    retry_delay_seconds: 300
+
+# Probability calibration configuration
+calibration:
+  # Enable probability calibration
+  enabled: true
+  # Calibration method (isotonic, platt)
+  method: isotonic
+  # Number of bins for calibration evaluation
+  n_bins: 10
+  # Historical data for calibration
+  historical_data:
+    # Days of historical data to use
+    lookback_days: 90
+    # Minimum number of samples required
+    min_samples: 1000
+    # Use cross-validation for calibration
+    use_cross_validation: true
+    # Number of cross-validation folds
+    cv_folds: 5
+  # Recalibration settings
+  recalibration:
+    # Frequency of recalibration
+    frequency: weekly
+    # Minimum improvement threshold to apply new calibration
+    min_improvement_threshold: 0.05
+
+# Forecast output configuration
+output:
+  # Output file format
+  format: parquet
+  # Compression method
+  compression: snappy
+  # Output directory path (references paths config)
+  path: ${paths.forecast_dir}
+  # Output filename template
+  filename_template: "forecast_{timestamp}_{model_version}.parquet"
+  # Metadata to include with forecasts
+  metadata:
+    # Include model information
+    include_model_info: true
+    # Include feature importance
+    include_feature_importance: true
+    # Include calibration metrics
+    include_calibration_metrics: true
+  # Notification settings
+  notifications:
+    # Enable notifications
+    enabled: false
+    # Send notification on successful completion
+    on_completion: true
+    # Send notification on error
+    on_error: true
+    # Notification recipients
+    recipients: []
