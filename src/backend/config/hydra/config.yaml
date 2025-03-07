@@ -1,0 +1,57 @@
+# Main Hydra configuration file for the ERCOT RTLMP spike prediction system
+# Serves as the root configuration that includes all other configuration components
+# Version: 1.0
+
+# Default configurations to include
+defaults:
+  - data: data                  # Data fetching, storage, and validation
+  - features: features          # Feature engineering and transformation
+  - models: models              # Model definition, training, and evaluation
+  - inference: inference        # Inference and forecast generation
+  - visualization: visualization # Visualization and dashboards
+  - _self_                      # Include this config as the last one for overrides
+
+# Hydra-specific configuration
+hydra:
+  job:
+    name: rtlmp_predict         # Job name for Hydra
+    chdir: True                 # Change working directory to the output directory
+  run:
+    # Output directory for Hydra runs using timestamp
+    dir: ${paths.output_dir}/runs/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    # Output directory for multi-run sweeps
+    dir: ${paths.output_dir}/multirun/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${hydra.job.num}    # Subdirectory pattern for sweep jobs
+  output_subdir: ${paths.output_dir}/hydra # Directory for Hydra outputs
+  verbose: ${system.verbose:false} # Use system verbose setting or default to false
+
+# System-wide configuration
+system:
+  # Deployment environment (development, staging, production)
+  environment: ${oc.env:ENVIRONMENT,development}
+  # Logging level
+  log_level: ${oc.env:LOG_LEVEL,INFO}
+  # Random seed for reproducibility
+  random_seed: 42
+  # Number of parallel jobs for operations that support parallelism
+  parallel_jobs: ${oc.env:PARALLEL_JOBS,4}
+  # Timezone for time-based operations
+  timezone: US/Central
+  # Verbose output flag
+  verbose: False
+
+# File system paths configuration
+paths:
+  # Base directory (default to current working directory)
+  base_dir: ${oc.env:BASE_DIR,${hydra:runtime.cwd}}
+  # Data directory structure
+  data_dir: ${paths.base_dir}/data
+  raw_data_dir: ${paths.data_dir}/raw
+  feature_dir: ${paths.data_dir}/features
+  model_dir: ${paths.data_dir}/models
+  forecast_dir: ${paths.data_dir}/forecasts
+  # Output directory for results and visualizations
+  output_dir: ${paths.base_dir}/output
+  # Log directory
+  log_dir: ${paths.base_dir}/logs
