@@ -1,0 +1,59 @@
+# Workflow configuration for GitHub Actions CodeQL analysis
+# This workflow performs security vulnerability scanning using GitHub's CodeQL
+# It runs on code pushes, pull requests, and a weekly schedule to identify potential security issues
+
+name: CodeQL Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - '*.py'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - '*.py'
+  schedule:
+    # Run weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for all workflows
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+        # CodeQL supports python, cpp, csharp, go, java, javascript, ruby
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        # Run additional security and quality queries
+        queries: security-and-quality
+
+    # Autobuild attempts to build any compiled languages
+    # For Python, the autobuild step works fine
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: source
