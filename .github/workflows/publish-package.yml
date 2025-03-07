@@ -1,0 +1,90 @@
+# GitHub Actions workflow to build and publish ERCOT RTLMP spike prediction system packages to PyPI
+name: Publish Package
+
+on:
+  # Trigger on new release creation
+  release:
+    types: [created]
+  # Allow manual triggering with component selection
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to publish (backend, cli, or both)'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - backend
+          - cli
+          - both
+
+jobs:
+  # Build job - creates distribution packages for the components
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: ['backend', 'cli']
+    
+    # Skip job based on workflow dispatch input - only build selected components
+    if: >
+      github.event_name != 'workflow_dispatch' || 
+      github.event.inputs.component == 'both' || 
+      github.event.inputs.component == matrix.component
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.component }}-${{ hashFiles('src/${{ matrix.component }}/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-${{ matrix.component }}-
+      
+      - name: Install build dependencies
+        run: pip install poetry build wheel
+      
+      - name: Build package
+        run: cd src/${{ matrix.component }} && poetry build
+      
+      - name: Upload built package
+        uses: actions/upload-artifact@v3
+        with:
+          name: package-${{ matrix.component }}
+          path: src/${{ matrix.component }}/dist/
+
+  # Publish job - uploads the built packages to PyPI
+  publish:
+    name: Publish Package
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: ['backend', 'cli']
+    
+    # Skip job based on workflow dispatch input - only publish selected components
+    if: >
+      github.event_name != 'workflow_dispatch' || 
+      github.event.inputs.component == 'both' || 
+      github.event.inputs.component == matrix.component
+    
+    steps:
+      - name: Download built package
+        uses: actions/download-artifact@v3
+        with:
+          name: package-${{ matrix.component }}
+          path: dist
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: dist/
