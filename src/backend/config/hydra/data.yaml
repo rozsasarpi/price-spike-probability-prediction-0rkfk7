@@ -1,0 +1,169 @@
+# Hydra configuration for ERCOT RTLMP spike prediction system's data pipeline
+# This file defines data sources, storage options, fetching parameters, and validation rules
+
+data_sources:
+  ercot:
+    api:
+      base_url: https://api.ercot.com/
+      version: v1
+      auth:
+        key_env_var: ERCOT_API_KEY
+        secret_env_var: ERCOT_API_SECRET
+      endpoints:
+        rtlmp: /rtlmp/v1/
+        grid_conditions: /grid/v1/
+      rate_limits:
+        requests_per_minute: 60
+        requests_per_day: 10000
+    nodes:
+      - HB_NORTH
+      - HB_SOUTH
+      - HB_WEST
+      - HB_HOUSTON
+    data_types:
+      - rtlmp
+      - grid_conditions
+  
+  weather:
+    api:
+      base_url: https://api.weatherapi.com/v1
+      version: v1
+      auth:
+        key_env_var: WEATHER_API_KEY
+      endpoints:
+        forecast: /forecast.json
+        history: /history.json
+      rate_limits:
+        requests_per_minute: 60
+        requests_per_day: 1000
+    locations:
+      - name: NORTH_TX
+        latitude: 33.0
+        longitude: -97.0
+      - name: SOUTH_TX
+        latitude: 29.0
+        longitude: -98.5
+      - name: WEST_TX
+        latitude: 31.5
+        longitude: -101.0
+      - name: HOUSTON
+        latitude: 29.8
+        longitude: -95.4
+    parameters:
+      - temperature
+      - wind_speed
+      - solar_irradiance
+      - humidity
+      - cloud_cover
+  
+  mock:
+    enabled: ${oc.env:USE_MOCK_DATA,false}
+    seed: ${system.random_seed}
+    rtlmp:
+      min_price: 10.0
+      max_price: 500.0
+      spike_probability: 0.05
+      spike_magnitude: 1000.0
+    weather:
+      temperature_range: [40.0, 105.0]
+      wind_speed_range: [0.0, 30.0]
+      solar_irradiance_range: [0.0, 1000.0]
+      humidity_range: [20.0, 100.0]
+
+storage:
+  format: parquet
+  compression: snappy
+  partitioning:
+    rtlmp: [year, month, day]
+    weather: [year, month, day]
+    grid_conditions: [year, month, day]
+    features: [year, month, day]
+    forecasts: [year, month, day]
+  paths:
+    rtlmp: ${paths.raw_data_dir}/rtlmp
+    weather: ${paths.raw_data_dir}/weather
+    grid_conditions: ${paths.raw_data_dir}/grid
+    features: ${paths.feature_dir}
+    forecasts: ${paths.forecast_dir}
+  naming:
+    rtlmp: rtlmp_{timestamp}_{node_id}
+    weather: weather_{timestamp}_{location_id}
+    grid_conditions: grid_{timestamp}
+    features: features_{timestamp}_{feature_group}
+    forecasts: forecast_{timestamp}_threshold_{threshold}
+  cache:
+    enabled: true
+    max_size_mb: 1024
+    ttl_seconds: 3600
+
+fetching:
+  historical:
+    max_days_per_request: 30
+    max_days_total: 365
+    batch_size: 7
+  forecast:
+    max_horizon_hours: 72
+    max_days: 10
+    update_frequency_hours: 6
+  retry:
+    max_attempts: 3
+    initial_delay_seconds: 1.0
+    backoff_factor: 2.0
+    max_delay_seconds: 60.0
+  timeout:
+    connect: 10
+    read: 30
+    total: 60
+
+validation:
+  schemas:
+    rtlmp:
+      required_columns:
+        - timestamp
+        - node_id
+        - price
+        - congestion_price
+        - loss_price
+        - energy_price
+      timestamp_format: "%Y-%m-%dT%H:%M:%S"
+      price_range: [0.0, 10000.0]
+    weather:
+      required_columns:
+        - timestamp
+        - location_id
+        - temperature
+        - wind_speed
+        - solar_irradiance
+        - humidity
+      timestamp_format: "%Y-%m-%dT%H:%M:%S"
+      temperature_range: [0.0, 120.0]
+      wind_speed_range: [0.0, 100.0]
+    grid_conditions:
+      required_columns:
+        - timestamp
+        - total_load
+        - available_capacity
+        - wind_generation
+        - solar_generation
+      timestamp_format: "%Y-%m-%dT%H:%M:%S"
+      load_range: [0.0, 100000.0]
+    features:
+      timestamp_column: timestamp
+      timestamp_format: "%Y-%m-%dT%H:%M:%S"
+    forecasts:
+      required_columns:
+        - forecast_timestamp
+        - target_timestamp
+        - threshold_value
+        - spike_probability
+      timestamp_format: "%Y-%m-%dT%H:%M:%S"
+      probability_range: [0.0, 1.0]
+  quality:
+    check_missing_values: true
+    max_missing_percentage: 5.0
+    check_duplicates: true
+    check_chronological_order: true
+    imputation:
+      enabled: true
+      method: interpolate
+      max_gap_hours: 2
