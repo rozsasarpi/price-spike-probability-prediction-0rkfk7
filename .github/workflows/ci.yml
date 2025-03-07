@@ -1,0 +1,155 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, cli]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.component }}-${{ hashFiles('src/${{ matrix.component }}/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-${{ matrix.component }}-
+      
+      - name: Install dependencies
+        run: pip install -r src/${{ matrix.component }}/requirements.txt black isort mypy flake8
+      
+      - name: Run black
+        run: black --check src/${{ matrix.component }}
+      
+      - name: Run isort
+        run: isort --check src/${{ matrix.component }}
+      
+      - name: Run mypy
+        run: mypy src/${{ matrix.component }}
+      
+      - name: Run flake8
+        run: flake8 src/${{ matrix.component }}
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        component: [backend, cli]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.component }}-${{ hashFiles('src/${{ matrix.component }}/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-${{ matrix.component }}-
+      
+      - name: Install dependencies
+        run: pip install -r src/${{ matrix.component }}/requirements.txt pytest pytest-cov pytest-mock
+      
+      - name: Install backend package in development mode
+        if: matrix.component == 'backend'
+        run: pip install -e src/backend
+      
+      - name: Install CLI package in development mode
+        if: matrix.component == 'cli'
+        run: pip install -e src/backend && pip install -e src/cli
+      
+      - name: Run tests with coverage
+        run: cd src/${{ matrix.component }} && pytest --cov=src/${{ matrix.component }} --cov-report=xml --cov-report=term-missing tests/
+      
+      - name: Check coverage threshold
+        run: cd src/${{ matrix.component }} && python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); coverage = float(root.attrib['line-rate']) * 100; print(f'Coverage: {coverage:.2f}%'); exit(0 if coverage >= 85 else 1)"
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-${{ matrix.component }}
+          path: src/${{ matrix.component }}/coverage.xml
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-integration-${{ hashFiles('src/backend/requirements.txt', 'src/cli/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-integration-
+      
+      - name: Install dependencies
+        run: pip install -r src/backend/requirements.txt -r src/cli/requirements.txt pytest pytest-cov pytest-mock
+      
+      - name: Install packages in development mode
+        run: pip install -e src/backend && pip install -e src/cli
+      
+      - name: Run integration tests
+        run: pytest src/backend/tests/integration/ src/cli/tests/integration/
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [test, integration-test]
+    strategy:
+      matrix:
+        component: [backend, cli]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install build dependencies
+        run: pip install poetry build wheel
+      
+      - name: Build package
+        run: cd src/${{ matrix.component }} && poetry build
+      
+      - name: Upload built package
+        uses: actions/upload-artifact@v3
+        with:
+          name: package-${{ matrix.component }}
+          path: src/${{ matrix.component }}/dist/
