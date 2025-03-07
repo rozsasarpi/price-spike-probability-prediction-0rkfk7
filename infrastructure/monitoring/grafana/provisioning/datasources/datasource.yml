@@ -1,0 +1,31 @@
+# Grafana datasource provisioning configuration for ERCOT RTLMP spike prediction system
+# This file automatically configures the connection to Prometheus for system metrics
+# Version: 1.0
+
+apiVersion: 1
+
+# Remove any existing Prometheus datasources to avoid duplicates
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+# Configure the Prometheus datasource
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: http://prometheus:9090
+    basicAuth: false
+    isDefault: true
+    version: 1
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: "POST"
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: tempo
+      manageAlerts: true
+      alertmanagerUid: alertmanager
