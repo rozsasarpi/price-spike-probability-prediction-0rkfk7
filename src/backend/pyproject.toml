@@ -1,0 +1,76 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "ercot-rtlmp-prediction"
+version = "0.1.0"
+description = "ERCOT RTLMP spike prediction system for forecasting the probability of price spikes in the Real-Time Locational Marginal Price market"
+authors = ["Data Science Team <datascience@example.com>"]
+readme = "README.md"
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis"
+]
+keywords = ["ercot", "energy", "price-prediction", "machine-learning", "time-series"]
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+numpy = ">=1.24.0"  # Foundation for efficient numerical operations on time series data
+pandas = ">=2.0.0"  # Essential for handling time series data with built-in resampling and rolling statistics
+scikit-learn = ">=1.2.0"  # Provides consistent API for model training, cross-validation, and evaluation metrics
+xgboost = ">=1.7.0"  # High-performance implementation for classification tasks with probability outputs
+lightgbm = ">=3.3.0"  # Alternative to XGBoost with faster training times for large datasets
+pandera = ">=0.15.0"  # Schema validation for DataFrames to ensure data quality and consistency
+joblib = ">=1.2.0"  # Efficient serialization of model artifacts
+matplotlib = ">=3.7.0"  # Foundation for visualization capabilities
+seaborn = ">=0.12.0"  # Enhanced statistical plots for model evaluation
+plotly = ">=5.14.0"  # Interactive plots for exploring forecasts and model performance
+requests = ">=2.28.0"  # For making HTTP requests to ERCOT and weather APIs
+hydra-core = ">=1.3.0"  # Configuration management for model training and inference
+omegaconf = ">=2.3.0"  # YAML-based hierarchical configuration system used by Hydra
+pydantic = ">=2.0.0"  # Type validation for configuration and parameters
+pyarrow = ">=12.0.0"  # Required for efficient Parquet file operations
+pytz = ">=2023.3"  # For timezone handling in ERCOT data processing
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.3.0"  # Industry standard for Python testing
+pytest-cov = ">=4.1.0"  # Code coverage reporting for tests
+pytest-mock = ">=3.10.0"  # Mocking functionality for tests
+black = ">=23.3.0"  # Code formatting for consistent style
+isort = ">=5.12.0"  # Import sorting for organized imports
+mypy = ">=1.3.0"  # Static type checking for improved code quality
+pre-commit = ">=3.3.0"  # Framework for managing git pre-commit hooks
+sphinx = ">=7.0.0"  # Documentation generation from docstrings
+typing-extensions = ">=4.5.0"  # Backported and experimental type hints for Python
+
+[tool.poetry.scripts]
+rtlmp-predict = "src.backend.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
