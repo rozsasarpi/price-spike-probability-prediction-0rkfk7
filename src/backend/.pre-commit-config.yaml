@@ -1,0 +1,51 @@
+# Pre-commit hooks configuration for ERCOT RTLMP spike prediction system
+# Enforces code quality, formatting, and security standards
+# pre-commit version: 2.20.0
+
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    -   id: trailing-whitespace  # Trims trailing whitespace from all files
+    -   id: end-of-file-fixer  # Ensures files end with a newline
+    -   id: check-yaml  # Validates YAML syntax
+    -   id: check-added-large-files  # Prevents giant files from being committed
+    -   id: check-json  # Validates JSON syntax
+    -   id: check-toml  # Validates TOML syntax
+
+-   repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+    -   id: black  # Formats Python code according to Black's style guide
+
+-   repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+    -   id: isort  # Sorts Python imports alphabetically and by type
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.3.0
+    hooks:
+    -   id: mypy  # Performs static type checking on Python code
+        additional_dependencies:
+        - types-requests
+        - types-PyYAML
+        - pandas-stubs
+        - types-setuptools
+
+-   repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+    -   id: flake8  # Checks for PEP 8 compliance and programming errors
+
+-   repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+    -   id: bandit  # Finds common security issues in Python code
+        args: [-ll]  # Low level of verbosity
+
+-   repo: https://github.com/PyCQA/pylint
+    rev: v2.17.4
+    hooks:
+    -   id: pylint  # Analyzes code for errors and enforces coding standards
+        args: ['--rcfile=src/backend/.pylintrc']
