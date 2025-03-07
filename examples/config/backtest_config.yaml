@@ -1,0 +1,116 @@
+# Example Backtesting Configuration for ERCOT RTLMP Spike Prediction System
+# 
+# This configuration file defines parameters for simulating historical forecasts
+# and evaluating model performance across different time periods, price thresholds,
+# and nodes.
+
+# Scenario configuration: defines the time periods and data selection for backtesting
+scenario:
+  name: example_backtest
+  start_date: '2022-01-01'  # Beginning of backtesting period
+  end_date: '2022-12-31'    # End of backtesting period
+  window_size_days: 30      # Size of each backtesting window in days
+  window_stride_days: 30    # Step size between consecutive windows
+  nodes:                    # ERCOT nodes to include in backtesting
+    - HB_NORTH
+    - HB_SOUTH
+    - HB_WEST
+    - HB_HOUSTON
+  forecast_horizon: 72      # Number of hours in the forecast horizon
+  parallel_execution:       # Configuration for parallel backtesting execution
+    enabled: true
+    n_jobs: -1              # -1 uses all available cores
+  data_selection:           # Data sources to include in backtesting
+    include_weather_data: true
+    include_grid_conditions: true
+    include_historical_prices: true
+    min_data_points_required: 1000
+
+# Model configuration: defines which model to use for backtesting
+model:
+  model_type: xgboost       # Type of model to use (xgboost, lightgbm, etc.)
+  model_version: null       # Use null for latest model, or specify version
+  retrain_per_window: false # Whether to retrain model for each backtesting window
+  hyperparameters:          # Model hyperparameters for training (if retrain_per_window is true)
+    learning_rate: 0.05
+    max_depth: 6
+    min_child_weight: 1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    n_estimators: 200
+    objective: binary:logistic
+    eval_metric: auc
+  feature_selection:        # Feature selection configuration
+    enabled: true
+    method: importance_threshold
+    importance_threshold: 0.005
+    max_features: 100
+
+# Threshold configuration: defines the price thresholds for spike prediction
+thresholds:
+  values:                   # List of price thresholds in $/MWh
+    - 50.0
+    - 100.0
+    - 200.0
+    - 500.0
+    - 1000.0
+  custom_thresholds_enabled: true
+  dynamic_threshold:        # Configure dynamic threshold based on historical data
+    enabled: false
+    method: percentile
+    params:
+      percentile: 95
+      lookback_days: 30
+
+# Metrics configuration: defines how model performance is evaluated
+metrics:
+  primary: auc              # Primary evaluation metric
+  secondary:                # Additional evaluation metrics
+    - brier_score
+    - precision
+    - recall
+    - f1
+    - accuracy
+  calibration:              # Probability calibration evaluation
+    enabled: true
+    n_bins: 10
+    strategy: isotonic
+  confusion_matrix: true    # Generate confusion matrix
+  threshold_performance: true # Evaluate performance across different probability thresholds
+  time_based_analysis:      # Analyze performance by time periods
+    enabled: true
+    groupby:
+      - hour_of_day
+      - day_of_week
+      - month
+  visualization:            # Visualization configuration
+    enabled: true
+    plots:
+      - roc_curve
+      - precision_recall_curve
+      - calibration_curve
+      - confusion_matrix
+      - threshold_performance
+    interactive: true
+    save_plots: true
+
+# Output configuration: defines how backtesting results are stored
+output:
+  format: parquet           # Output file format
+  compression: snappy       # Compression algorithm
+  path: ${paths.backtest_results_dir}  # Output directory (resolved by Hydra)
+  filename_template: backtest_{scenario_name}_{timestamp}.parquet
+  save_intermediate_results: true
+  detailed_report:          # Configuration for detailed reporting
+    enabled: true
+    format:
+      - json
+      - html
+    include_plots: true
+  export:                   # Export configurations
+    csv:
+      enabled: true
+      path: ${paths.output_dir}/backtest_results
+    json:
+      enabled: true
+      path: ${paths.output_dir}/backtest_results
