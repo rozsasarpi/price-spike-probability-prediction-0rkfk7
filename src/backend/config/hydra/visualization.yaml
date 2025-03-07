@@ -1,0 +1,194 @@
+# Visualization configuration for ERCOT RTLMP spike prediction system
+# Provides settings for plots, dashboards, color schemes, and export options
+# Used by: Visualization and Metrics Tools (F-007)
+
+plots:
+  # General plot settings
+  default_figure_size: [12, 8]
+  default_dpi: 100
+  default_cmap: viridis
+  default_bins: 10
+  confidence_alpha: 0.3
+  
+  # Static plot settings (Matplotlib/Seaborn)
+  static:
+    use_seaborn_style: true
+    seaborn_context: notebook
+    seaborn_style: whitegrid
+    matplotlib_style: default
+  
+  # Interactive plot settings (Plotly)
+  interactive:
+    template: plotly_white
+    include_plotlyjs: true
+    full_html: true
+    auto_open: false
+  
+  # Forecast visualization settings
+  forecast:
+    show_confidence_intervals: true
+    default_thresholds: [50.0, 100.0, 200.0, 500.0]
+    default_nodes: [HB_NORTH, HB_SOUTH, HB_WEST, HB_HOUSTON]
+    timeline_height: 500
+    comparison_height: 450
+    heatmap_height: 400
+  
+  # Model performance visualization settings
+  performance:
+    default_metrics: [accuracy, precision, recall, f1, auc, brier_score]
+    roc_height: 450
+    pr_curve_height: 450
+    calibration_height: 450
+    confusion_matrix_height: 400
+    threshold_sensitivity_height: 400
+  
+  # Feature importance visualization settings
+  feature_importance:
+    default_top_n: 20
+    bar_chart_height: 500
+    group_chart_height: 400
+    correlation_height: 500
+    dependency_graph_height: 600
+    show_feature_groups: true
+  
+  # Calibration plot settings
+  calibration:
+    show_histogram: true
+    default_n_bins: 10
+    curve_height: 450
+    histogram_height: 200
+
+dashboards:
+  # Main metrics dashboard configuration
+  metrics_dashboard:
+    title: ERCOT RTLMP Spike Prediction Dashboard
+    host: 0.0.0.0
+    port: 8050
+    debug: false
+    refresh_interval_seconds: 300
+    theme:
+      background: '#F9F9F9'
+      text: '#333333'
+      primary: '#1f77b4'
+      secondary: '#ff7f0e'
+      accent: '#2ca02c'
+    tabs:
+      model_performance:
+        title: Model Performance
+        enabled: true
+        default_metrics: [auc, precision, recall, f1, brier_score]
+      forecast:
+        title: Forecast Visualization
+        enabled: true
+        default_threshold: 100.0
+        default_node: HB_NORTH
+      backtesting:
+        title: Backtesting Results
+        enabled: true
+        default_date_range_days: 30
+      feature_importance:
+        title: Feature Importance
+        enabled: true
+        default_top_n: 15
+    layout:
+      max_width: '1200px'
+      column_spacing: '20px'
+      row_spacing: '20px'
+      card_padding: '15px'
+  
+  # Forecast-specific dashboard configuration
+  forecast_dashboard:
+    title: RTLMP Spike Forecast Dashboard
+    enabled: true
+    default_threshold: 100.0
+    default_node: HB_NORTH
+    show_confidence_intervals: true
+    layout:
+      max_width: '1200px'
+      column_spacing: '20px'
+      row_spacing: '20px'
+  
+  # Model performance dashboard configuration
+  model_dashboard:
+    title: Model Performance Dashboard
+    enabled: true
+    default_metrics: [auc, precision, recall, f1, brier_score]
+    layout:
+      max_width: '1200px'
+      column_spacing: '20px'
+      row_spacing: '20px'
+
+colors:
+  # Color schemes for different nodes
+  node_colors:
+    HB_NORTH: '#1f77b4'
+    HB_SOUTH: '#ff7f0e'
+    HB_WEST: '#2ca02c'
+    HB_HOUSTON: '#d62728'
+  
+  # Color schemes for different thresholds
+  threshold_colors:
+    '50.0': '#1f77b4'
+    '100.0': '#ff7f0e'
+    '200.0': '#2ca02c'
+    '500.0': '#d62728'
+  
+  # Line styles for different thresholds
+  threshold_linestyles:
+    '50.0': '-'
+    '100.0': '--'
+    '200.0': '-.'
+    '500.0': ':'
+  
+  # Color schemes for metrics
+  metric_colors:
+    accuracy: '#1f77b4'
+    precision: '#ff7f0e'
+    recall: '#2ca02c'
+    f1: '#d62728'
+    auc: '#9467bd'
+    brier_score: '#8c564b'
+  
+  # Color schemes for feature groups
+  feature_group_colors:
+    time: '#1f77b4'
+    statistical: '#ff7f0e'
+    weather: '#2ca02c'
+    market: '#d62728'
+    grid: '#9467bd'
+  
+  # Color schemes for calibration plots
+  calibration_colors:
+    observed: '#1f77b4'
+    perfect: '#ff7f0e'
+    histogram: '#2ca02c'
+  
+  # Color maps for different plot types
+  colormaps:
+    heatmap: viridis
+    correlation: RdBu_r
+    feature_importance: viridis
+
+export:
+  # Export settings
+  default_format: png
+  default_dpi: 300
+  output_dir: ${paths.output_dir}/visualizations
+  
+  # Supported export formats
+  static_formats: [png, pdf, svg, jpg]
+  interactive_formats: [html]
+  
+  # Filename templates for different visualization types
+  filename_templates:
+    forecast: forecast_{timestamp}_{threshold}_{node}
+    performance: performance_{model_type}_{version}_{metric}
+    feature_importance: feature_importance_{model_type}_{version}
+    calibration: calibration_{model_type}_{version}
+    dashboard: dashboard_{timestamp}
+  
+  # HTML export options for interactive visualizations
+  html_options:
+    include_plotlyjs: true
+    full_html: true
+    auto_open: false
